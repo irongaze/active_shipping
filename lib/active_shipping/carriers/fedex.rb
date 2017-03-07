@@ -139,6 +139,13 @@ module ActiveShipping
     # Available return formats for image data when creating labels
     LABEL_FORMATS = ['DPL', 'EPL2', 'PDF', 'ZPLII', 'PNG'] 
 
+    # Valid values for the :smart_post_indicia option
+    SMART_POST_INDICIA_TYPES = %w(MEDIA_MAIL PARCEL_RETURN PARCEL_SELECT PRESORTED_BOUND_PRINTED_MATTER PRESORTED_STANDARD).freeze
+    # Default to 1-70 pound shipment
+    DEFAULT_SMART_POST_INDICIA = 'PARCEL_SELECT'.freeze
+    # Use this when set to test mode - only valid hub ID in test mode
+    TEST_SMART_POST_HUB_ID = '5531'.freeze
+
     def self.service_name_for_code(service_code)
       SERVICE_TYPES[service_code] || "FedEx #{service_code.titleize.sub(/Fedex /, '')}"
     end
@@ -220,6 +227,46 @@ module ActiveShipping
               end
             end
 
+            if options[:smart_post_hub_id]
+              xml.SmartPostDetail do
+                xml.Indicia(options[:smart_post_indicia] || DEFAULT_SMART_POST_INDICIA)
+                xml.HubId(options[:smart_post_hub_id])
+                # xml.ProcessingOptionsRequested()
+              end
+            end            
+
+            # xml.CustomsClearanceDetail do |xml|
+            #   xml.DutiesPayment do |xml|
+            #     xml.PaymentType('SENDER')
+            #     xml.Payor do
+            #       build_shipment_responsible_party_node(xml, options[:shipper] || origin)
+            #     end
+            #   end
+            #   xml.CustomsValue do |xml|
+            #     xml.Currency(packages.first.currency || "USD")
+            #     xml.Amount(packages.sum {|p| p.value})
+            #   end
+            #   xml.Commodities do |xml|
+            #     packages.each do |package|
+            #       xml.Name(package.try(:name) || "Item Name")
+            #       xml.NumberOfPieces(package.try(:quantity) || 1)
+            #       xml.Description(package.try(:description) || "Item Description")
+            #       xml.CountryOfManufacture(origin.country_code)
+            #       build_package_weight_node(xml, package, imperial)
+            #       xml.Quantity(package.try(:quantity) || 1)
+            #       xml.QuantityUnits("PCS")
+            #       xml.UnitPrice do |xml|
+            #         xml.Currency(package.currency || "USD")
+            #         xml.Amount(package.value)
+            #       end
+            #       xml.CustomsValue do |xml|
+            #         xml.Currency(package.currency || "USD")
+            #         xml.Amount(package.value)
+            #       end
+            #     end
+            #   end
+            # end
+            
             xml.LabelSpecification do
               xml.LabelFormatType('COMMON2D')
               xml.ImageType(options[:label_format] || 'PNG')
@@ -330,7 +377,7 @@ module ActiveShipping
               build_rate_request_types_node(xml)
             else
               xml.SmartPostDetail do
-                xml.Indicia(options[:smart_post_indicia] || 'PARCEL_SELECT')
+                xml.Indicia(options[:smart_post_indicia] || DEFAULT_SMART_POST_INDICIA)
                 xml.HubId(options[:smart_post_hub_id] || 5902) # default to LA
               end
 
